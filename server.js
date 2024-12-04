@@ -1,120 +1,123 @@
 const express = require('express');
-const serverless = require('serverless-http');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
-// Enhanced error logging function
-function logError(error) {
-    console.error('Detailed Error Log:');
-    console.error('Error Name:', error.name);
-    console.error('Error Message:', error.message);
-    console.error('Error Stack:', error.stack);
-}
-
-// Mongoose Connection Handler
+// Connect to MongoDB
 const connectDB = async () => {
-    try {
-        await mongoose.connect(process.env.MONGODB_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
-        });
-        console.log('MongoDB Connected Successfully');
-    } catch (error) {
-        console.error('MongoDB Connection Error:', error);
-        logError(error);
+    if (mongoose.connection.readyState === 0) {
+        try {
+            await mongoose.connect(process.env.MONGODB_URI, {
+                useNewUrlParser: true,
+                useUnifiedTopology: true
+            });
+            console.log('MongoDB Connected Successfully');
+        } catch (error) {
+            console.error('MongoDB Connection Error:', error);
+            throw error;
+        }
     }
 };
 
 // Student Schema
 const studentSchema = new mongoose.Schema({
-    name: String,
-    student_id: String,
-    admission_year: Number,
-    department: String,
-    program: String,
-    current_semester: Number,
+    name: { type: String, required: true },
+    student_id: { type: String, required: true },
+    admission_year: { type: Number, required: true },
+    department: { type: String, required: true },
+    program: { type: String, required: true },
+    current_semester: { type: Number, required: true },
     courses: [{
-        course_code: String,
-        course_name: String,
-        instructor: String,
-        credits: Number,
-        semester: Number
+        course_code: { type: String, required: true },
+        course_name: { type: String, required: true },
+        instructor: { type: String, required: true },
+        credits: { type: Number, required: true },
+        semester: { type: Number, required: true }
     }],
     academic_performance: {
-        cgpa: Number,
+        cgpa: { type: Number, required: true },
         semester_wise_gpa: [{
-            semester: Number,
-            gpa: Number
+            semester: { type: Number, required: true },
+            gpa: { type: Number, required: true }
         }],
         backlogs: [{
-            course_code: String,
-            attempts: Number
+            course_code: { type: String, required: true },
+            attempts: { type: Number, required: true }
         }]
     },
     attendance: {
-        total_classes: Number,
-        attended_classes: Number,
-        percentage: Number
+        total_classes: { type: Number, required: true },
+        attended_classes: { type: Number, required: true },
+        percentage: { type: Number, required: true }
     }
 });
 
+// Prevent model re-compilation
 const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
 
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
+// API Handler
+export default async function handler(req, res) {
+    // Enable CORS
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
 
-// Root route for debugging
-app.get('/', (req, res) => {
-    res.status(200).json({
-        message: 'Serverless function is working',
-        environment: process.env.NODE_ENV
-    });
-});
+    // Handle OPTIONS request
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
 
-// Student Registration Endpoint
-app.post('/api/students', async (req, res) => {
     try {
-        // Ensure DB connection before processing
+        // Connect to MongoDB
         await connectDB();
 
-        const student = new Student(req.body);
-        const savedStudent = await student.save();
-        
-        res.status(201).json({
-            message: 'Student registered successfully',
-            student: savedStudent
-        });
+        // Handle different HTTP methods
+        switch (req.method) {
+            case 'POST':
+                try {
+                    const studentData = req.body;
+                    const student = new Student(studentData);
+                    const savedStudent = await student.save();
+
+                    res.status(201).json({
+                        message: 'Student registered successfully',
+                        student: savedStudent
+                    });
+                } catch (error) {
+                    console.error('Registration Error:', error);
+                    
+                    if (error.name === 'ValidationError') {
+                        return res.status(400).json({
+                            message: 'Validation Error',
+                            errors: Object.values(error.errors).map(err => err.message)
+                        });
+                    }
+
+                    res.status(500).json({
+                        message: 'Internal Server Error',
+                        error: error.message
+                    });
+                }
+                break;
+
+            case 'GET':
+                res.status(200).json({ message: 'API is running' });
+                break;
+
+            default:
+                res.setHeader('Allow', ['GET', 'POST']);
+                res.status(405).end(`Method ${req.method} Not Allowed`);
+        }
     } catch (error) {
-        console.error('Student Registration Error:', error);
-        logError(error);
-        
+        console.error('Unexpected Error:', error);
         res.status(500).json({
-            message: 'Internal Server Error',
-            error: {
-                name: error.name,
-                message: error.message
-            }
+            message: 'Unexpected Server Error',
+            error: error.message
         });
     }
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Unhandled Error:', err);
-    logError(err);
-    res.status(500).json({
-        message: 'Unexpected Error',
-        error: {
-            name: err.name,
-            message: err.message
-        }
-    });
-});
-
-// Initialize DB Connection on module load
-connectDB();
-
-// Export serverless handler
-module.exports.handler = serverless(app);
+}

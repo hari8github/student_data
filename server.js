@@ -1,28 +1,32 @@
 const express = require('express');
+const serverless = require('serverless-http');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const path = require('path');
-const app = express();
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
-app.use(express.static(path.join(__dirname, 'static'))); // Serve static files
+// Enhanced error logging function
+function logError(error) {
+    console.error('Detailed Error Log:');
+    console.error('Error Name:', error.name);
+    console.error('Error Message:', error.message);
+    console.error('Error Stack:', error.stack);
+}
 
-// Serve the HTML file from the templates folder
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'templates', 'std.html'));     
-});
+// Mongoose Connection Handler
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGODB_URI, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true
+        });
+        console.log('MongoDB Connected Successfully');
+    } catch (error) {
+        console.error('MongoDB Connection Error:', error);
+        logError(error);
+    }
+};
 
-// MongoDB Connection
-const MONGODB_URI = process.env.MONGODB_URI || 'your-mongodb-connection-string';
-mongoose.connect(MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-});
-
-// Student Schema (assuming it's declared earlier in your file)
+// Student Schema
 const studentSchema = new mongoose.Schema({
     name: String,
     student_id: String,
@@ -30,29 +34,23 @@ const studentSchema = new mongoose.Schema({
     department: String,
     program: String,
     current_semester: Number,
-    courses: [
-        {
-            course_code: String,
-            course_name: String,
-            instructor: String,
-            credits: Number,
-            semester: Number
-        }
-    ],
+    courses: [{
+        course_code: String,
+        course_name: String,
+        instructor: String,
+        credits: Number,
+        semester: Number
+    }],
     academic_performance: {
         cgpa: Number,
-        semester_wise_gpa: [
-            {
-                semester: Number,
-                gpa: Number
-            }
-        ],
-        backlogs: [
-            {
-                course_code: String,
-                attempts: Number
-            }
-        ]
+        semester_wise_gpa: [{
+            semester: Number,
+            gpa: Number
+        }],
+        backlogs: [{
+            course_code: String,
+            attempts: Number
+        }]
     },
     attendance: {
         total_classes: Number,
@@ -60,20 +58,63 @@ const studentSchema = new mongoose.Schema({
         percentage: Number
     }
 });
-const Student = mongoose.model('student_data', studentSchema);
 
-// API Endpoint
+const Student = mongoose.models.Student || mongoose.model('Student', studentSchema);
+
+const app = express();
+app.use(cors());
+app.use(bodyParser.json());
+
+// Root route for debugging
+app.get('/', (req, res) => {
+    res.status(200).json({
+        message: 'Serverless function is working',
+        environment: process.env.NODE_ENV
+    });
+});
+
+// Student Registration Endpoint
 app.post('/api/students', async (req, res) => {
     try {
+        // Ensure DB connection before processing
+        await connectDB();
+
         const student = new Student(req.body);
-        await student.save();
-        res.status(201).json(student);
+        const savedStudent = await student.save();
+        
+        res.status(201).json({
+            message: 'Student registered successfully',
+            student: savedStudent
+        });
     } catch (error) {
-        res.status(400).json({ message: error.message });
+        console.error('Student Registration Error:', error);
+        logError(error);
+        
+        res.status(500).json({
+            message: 'Internal Server Error',
+            error: {
+                name: error.name,
+                message: error.message
+            }
+        });
     }
 });
 
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err);
+    logError(err);
+    res.status(500).json({
+        message: 'Unexpected Error',
+        error: {
+            name: err.name,
+            message: err.message
+        }
+    });
 });
+
+// Initialize DB Connection on module load
+connectDB();
+
+// Export serverless handler
+module.exports.handler = serverless(app);

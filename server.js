@@ -16,7 +16,8 @@ app.get('/', (req, res) => {
 });
 
 // MongoDB Connection
-mongoose.connect('mongodb+srv://toharivenkat:hari2444@clusterhv.ew0w3qw.mongodb.net/?retryWrites=true&w=majority&appName=Clusterhv', {
+const MONGODB_URI = process.env.MONGODB_URI || 'your-mongodb-connection-string';
+mongoose.connect(MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 });

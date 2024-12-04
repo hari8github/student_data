@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Registration</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <form id="studentForm">
+            <h2>Student Registration</h2>
+            
+            <div class="section">
+                <h3>Personal Details</h3>
+                <input type="text" id="studentId" placeholder="Student ID" required>
+                <input type="text" id="studentName" placeholder="Student Name" required>
+                <input type="number" id="admissionYear" placeholder="Admission Year" required>
+                <select id="department" required>
+                    <option value="">Select Department</option>
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Engineering">Engineering</option>
+                </select>
+                <select id="program" required>
+                    <option value="">Select Program</option>
+                    <option value="postgraduate">Postgraduate</option>
+                    <option value="undergraduate">Undergraduate</option>
+                </select>
+                <input type="number" id="currentSemester" placeholder="Current Semester" required>
+            </div>
+
+            <div class="section">
+                <h3>Courses</h3>
+                <div id="coursesContainer">
+                    <div class="course-row">
+                        <input type="text" class="courseCode" placeholder="Course Code">
+                        <input type="text" class="courseName" placeholder="Course Name">
+                        <input type="text" class="instructor" placeholder="Instructor">
+                        <input type="number" class="credits" placeholder="Credits">
+                        <input type="number" class="semester" placeholder="Semester">
+                    </div>
+                </div>
+                <button type="button" id="addCourseBtn">Add Course</button>
+            </div>
+
+            <div class="section">
+                <h3>Academic Performance</h3>
+                <input type="number" id="cgpa" step="0.01" placeholder="CGPA">
+                <div id="semesterGpaContainer">
+                    <div class="semester-gpa-row">
+                        <input type="number" class="semesterNumber" placeholder="Semester">
+                        <input type="number" step="0.01" class="gpa" placeholder="GPA">
+                    </div>
+                </div>
+                <button type="button" id="addSemesterGpaBtn">Add Semester GPA</button>
+            </div>
+
+            <div class="section">
+                <h3>Backlogs</h3>
+                <div id="backlogsContainer">
+                    <div class="backlog-row">
+                        <input type="text" class="backlogCourseCode" placeholder="Course Code">
+                        <input type="number" class="attempts" placeholder="Attempts">
+                    </div>
+                </div>
+                <button type="button" id="addBacklogBtn">Add Backlog</button>
+            </div>
+
+            <div class="section">
+                <h3>Attendance</h3>
+                <input type="number" id="totalClasses" placeholder="Total Classes">
+                <input type="number" id="attendedClasses" placeholder="Attended Classes">
+                <input type="number" id="attendancePercentage" placeholder="Attendance %">
+            </div>
+
+            <button type="submit" id="submitBtn">Submit Registration</button>
+        </form>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
